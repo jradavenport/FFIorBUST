@@ -1,4 +1,4 @@
-We would like to thank: 
+# We would like to thank: 
 
 - #aas227
 - #hackaas
