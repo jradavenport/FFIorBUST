@@ -1,14 +1,18 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+#
+# Brigitta Sipocz 2016 --
+#
+# Photometry of Kepler Full Frame Images using the Astropy stack
+
+import glob
 import numpy as np
-import matplotlib.pylab as plt
 
 from astropy.io import fits
 from astropy.stats import mad_std
-import glob
 from astropy.wcs.utils import pixel_to_skycoord
 from astropy.wcs import WCS
 from astropy.utils.misc import isiterable
-
-from matplotlib.colors import LogNorm
 
 from photutils import daofind, aperture_photometry, CircularAperture
 
@@ -46,4 +50,3 @@ input_files = glob.glob('data/kplr*ffi-cal.fits')
 for ffi in input_files:
     fits.open(ffi)
     do_photometry(ffi, extentions=1)
-
