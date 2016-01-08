@@ -5,6 +5,16 @@ from astropy.wcs import WCS
 from astropy.visualization import scale_image
 import photutils
 
+'''
+Example:
+
+import aperture_phot as ap
+ex = ap.exposure(filepath)        # Load the fits file into an exposure class
+ex.extension(4)                   # Fun DAOfind on the extension of the given index and add to the source_lists variable
+ex.source_lists                   # Print the list of source_lists 
+
+'''
+
 class exposure:
   def __init__(self, filepath, verbose=True):
     '''
