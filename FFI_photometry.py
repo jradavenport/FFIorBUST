@@ -7,6 +7,7 @@
 
 import glob
 import numpy as np
+import os
 
 from astropy.io import fits
 from astropy.stats import mad_std
@@ -45,8 +46,16 @@ def do_photometry(hdu, extensions=None, threshold=5, fwhm=2.5):
     return output
 
 
+def cross_match_ffi():
+    return
+
+
 input_files = glob.glob('data/kplr*ffi-cal.fits')
 
+phot_results = {}
+
 for ffi in input_files:
-    fits.open(ffi)
-    do_photometry(ffi, extentions=1)
+    ffi_name = os.path.basename(ffi).split('_')[0]
+    ffi_hdu = fits.open(ffi)
+
+    phot_results[ffi_name] = do_photometry(ffi_hdu, extensions=1)
