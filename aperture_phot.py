@@ -4,8 +4,8 @@ import astropy.io.fits as pf
 from astropy.wcs import WCS
 from astropy.visualization import scale_image
 
-class get_exposure(filepath):
-  def __init__(self, verbose=True):
+class get_exposure:
+  def __init__(self, filepath, verbose=True):
     '''
     Parameters
     ----------
