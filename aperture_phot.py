@@ -38,7 +38,7 @@ class exposure:
     if verbose:
       self.hdulist.info()
         
-  def extension(self, extension_idx, threshold=3.0, FWHM='', sigma=3.0, plot=True, verbose=True):
+  def extension(self, extension_idx, threshold=3.0, FWHM='', sigma=3.0, plot=False):
     '''
     A method to run aperatue photometry routines on an individual extension and save the results to the exposure class
     
@@ -46,11 +46,14 @@ class exposure:
     ----------
     extension_idx: int
       Index of the extension
-    threshold: float (optional)
+    threshold: float
       The absolute image value above which to select sources
     FWHM: float (optional)
-      The full width at half maximum  
-      
+      The full width at half maximum
+    sigma: float
+      Number of standard deviations to use for error estimation
+    plot: bool
+      Plot the field with identified sources circled      
 
     Returns
     -------
