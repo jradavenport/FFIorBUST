@@ -4,6 +4,7 @@ import astropy.io.fits as pf
 from astropy.wcs import WCS
 from astropy.visualization import scale_image
 import photutils
+from astropy.stats import sigma_clipped_stats
 
 '''
 Example:
@@ -18,6 +19,8 @@ ex.source_lists                   # Print the list of source_lists
 class exposure:
   def __init__(self, filepath, verbose=True):
     '''
+    Creates an exposure class which has many extensions.
+    
     Parameters
     ----------
     filepath: str
@@ -33,12 +36,19 @@ class exposure:
     if verbose:
       self.hdulist.info()
         
-  def extension(self, extension_idx, plot=True, verbose=True):
+  def extension(self, extension_idx, threshold=3.0, FWHM='', sigma=3.0, plot=True, verbose=True):
     '''
+    A method to run aperatue photometry routines on an individual extension and save the results to the exposure class
+    
     Parameters
     ----------
     extension_idx: int
       Index of the extension
+    threshold: float (optional)
+      The absolute image value above which to select sources
+    FWHM: float (optional)
+      The full width at half maximum  
+      
 
     Returns
     -------
@@ -54,16 +64,18 @@ class exposure:
     hdr = self.hdulist[extension_idx].header
     wcs = WCS(hdr)
 
-    # Display the data
-    if plot: plt.imshow(scale_image(data, scale='sqrt', percent=99.5))
+    # Estimate the background and background noise
+    mean, median, std = sigma_clipped_stats(data, sigma=sigma, iters=5)
 
-    # Find the absolute image value above which to select sources and define FWHM
-    threshold = 1
-    FWHM = 2
-
-    # Generate source_list of all detections
-    source_list = photutils.daofind(data, threshold, FWHM)
+    # Subtract background and generate sources list of all detections
+    sources = photutils.daofind(data-median, threshold, FWHM or 5.*std)
+    self.source_lists.append(sources)     
     
-    self.source_lists.append(source_list)         
-    
+    # Plot the sources
+    if plot:
+      positions = (sources['xcentroid'], sources['ycentroid'])
+      apertures = CircularAperture(positions, r=4.)
+      norm = ImageNormalize(stretch=SqrtStretch())
+      plt.imshow(data, cmap='Greys', origin='lower', norm=norm)
+      apertures.plot(color='blue', lw=1.5, alpha=0.5)
       
