@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import os, time
 import astropy.io.fits as pf
 from glob import glob
+from scipy.spatial import cKDTree
 from photutils import daofind, aperture_photometry, detect_threshold, CircularAperture
 from astropy.wcs import WCS
 from astropy.wcs.utils import pixel_to_skycoord
@@ -24,14 +25,16 @@ ex = ap.exposure(filepath)        # Load the fits file into an exposure class
 ex.extension(4)                   # Run DAOfind on the extension of the given index and add to the source_tables list
 ex.source_tables                  # Print the list of source_tables 
 
-'''
+''' 
 
-def light_curves():
+def light_curves(search_radius=0.000005):
   '''
   Plot and save all possible light curves from the Kepler Full Frame Images
   '''
-  data = {}
+  exposures, sources = {}, {}
+  KIC = np.genfromtxt('./data/kic.txt', skip_header=True, delimiter='|', unpack=True, usecols=(0,1)).T
   
+  # Analyze all exposures
   for filepath in glob('./data/*.fits'):
     
     # Create exposure class
@@ -41,18 +44,39 @@ def light_curves():
     for idx in range(5): ex.extension(idx)
     
     # Add data to a master dictionary
-    data[ex.date_str] = ex.source_table
+    exposures[ex.date_str] = ex.source_table
   
   # Do some stuff to match objects across exposures
-  # CODE CODE CODE
-  
-  # Pull out all magnitudes for all exposures
-  # CODE CODE CODE
-  
-  # Plot the 53 exposure light curves and save them
-  plt.plot(datetime, magnitudes)
-  plt.title(source_id)
-  plt.savefig('./plots/{}.png'.format(source_id))
+  for source in KIC:
+    RA, DEC = source
+    name = '{:012.8f}'.format(RA)+('-' if DEC<0 else '+')+'{:012.8f}'.format(abs(DEC))
+    light_curve = []
+    
+    # Iterate through exposures to collect time-series detections
+    for exp in exposures:
+      # Create an array of all detection coordinates
+      ra, dec, phot = np.array([exp.source_table['ra'],exp.source_table['dec'],exp.source_table['aperture_sum']])
+      detections = np.array([ra,dec]).T
+      
+      # Create k-d tree of sources in the exposure
+      tree = cKDTree(detections)
+      
+      # Find distance and index of nearest neighbor then grab its coordinates from the exposure
+      distance, index = spatial.KDTree(detections).query(source)
+      coords, magnitude = tree[index], phot[index]
+      
+      # If the distance is within the specified search radius, add it to the light curve
+      if distance<search_radius: light_curve.append((exp.datetime,magnitude))
+    
+    # If there are any detections across the exposures, plot the light curve
+    if any(light_curve):
+      # Output data?
+      # sources[name] = {'ra':RA, 'dec':DEC, 'detections':detections.T}
+   
+      # Plot the light curve of all exposures and save it
+      plt.plot(*light_curve.T)
+      plt.title(name)
+      plt.savefig('./plots/{}.png'.format(name))
 
 class exposure:
   def __init__(self, filepath, verbose=False):
