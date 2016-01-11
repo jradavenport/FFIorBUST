@@ -1,7 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import photutils
+import photutils, os
 import astropy.io.fits as pf
+from glob import glob
 from astropy.wcs import WCS
 from astropy.visualization import scale_image
 from astropy.stats import sigma_clipped_stats
@@ -9,6 +10,8 @@ from astropy.visualization import SqrtStretch
 from astropy.visualization.mpl_normalize import ImageNormalize
 
 '''
+This is a module to extract light curves from all objects in 53 Kepler Full Frame Image exposures.
+
 Example:
 
 import aperture_phot as ap
@@ -18,8 +21,36 @@ ex.source_tables                  # Print the list of source_tables
 
 '''
 
+def light_curves():
+  '''
+  Plot and save all possible light curves from the Kepler Full Frame Images
+  '''
+  data = {}
+  
+  for filepath in glob('./data/*.fits'):
+    
+    # Create exposure class
+    ex = exposure(filepath)
+    
+    # Get photometry for all extensions
+    for idx in range(85): ex.extension(idx)
+    
+    # Add data to a master dictionary
+    data[ex.date_str] = ex.source_tables
+  
+  # Do some stuff to match objects across exposures
+  # CODE CODE CODE
+  
+  # Pull out all magnitudes for all exposures
+  # CODE CODE CODE
+  
+  # Plot the 53 exposure light curves and save them
+  plt.plot(datetime, magnitudes)
+  plt.title(source_id)
+  plt.savefig('./plots/{}.png'.format(source_id))
+
 class exposure:
-  def __init__(self, filepath, verbose=True):
+  def __init__(self, filepath, verbose=False):
     '''
     Creates an exposure class which has many extensions.
     
@@ -33,12 +64,16 @@ class exposure:
     '''
     self.source_tables = []
     
+    # Get the datetime of the exposure from the filename
+    self.date_str = os.path.basename(filepath).replace('_ffi-cal.fits','').replace('kplr','')
+    self.datetime = time.strptime(date_str, '%Y%j%H%M%S')
+    
     # Open the file and print the info
     self.hdulist = pf.open(filepath)
     if verbose:
       self.hdulist.info()
         
-  def extension(self, extension_idx, threshold='', FWHM=3.0, sigma=3.0, snr=50., plot=True):
+  def extension(self, extension_idx, threshold='', FWHM=3.0, sigma=3.0, snr=50., plot=False):
     '''
     A method to run aperatue photometry routines on an individual extension and save the results to the exposure class
     
@@ -93,4 +128,4 @@ class exposure:
       apertures.plot(color='blue', lw=1.5, alpha=0.5)
     
     print '{!s:10}: {}'.format('sources',len(sources))
-      
+  
