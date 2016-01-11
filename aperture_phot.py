@@ -3,13 +3,14 @@ import matplotlib.pyplot as plt
 import os, time
 import astropy.io.fits as pf
 from glob import glob
-from photutils import daofind, aperture_photometry, CircularAperture
+from photutils import daofind, aperture_photometry, detect_threshold, CircularAperture
 from astropy.wcs import WCS
 from astropy.wcs.utils import pixel_to_skycoord
 from astropy.visualization import scale_image
 from astropy.stats import sigma_clipped_stats
 from astropy.visualization import SqrtStretch
 from astropy.visualization.mpl_normalize import ImageNormalize
+from astropy.table import vstack, Table, Column
 
 '''
 This is a module to extract light curves from all objects in 53 Kepler Full Frame Image exposures.
@@ -36,11 +37,11 @@ def light_curves():
     # Create exposure class
     ex = exposure(filepath)
     
-    # Get photometry for all extensions
-    for idx in range(85): ex.extension(idx)
+    # Get photometry for all 85 extensions
+    for idx in range(5): ex.extension(idx)
     
     # Add data to a master dictionary
-    data[ex.date_str] = ex.source_tables
+    data[ex.date_str] = ex.source_table
   
   # Do some stuff to match objects across exposures
   # CODE CODE CODE
@@ -66,7 +67,7 @@ class exposure:
       Print some info to visually inspect
     
     '''
-    self.source_tables = []
+    self.source_table = Table(names=['aperture_sum','xcenter','ycenter','ra','dec'])
     
     # Open the file and print the info
     self.hdulist = pf.open(filepath)
@@ -106,7 +107,7 @@ class exposure:
     # Define the data array
     data = self.hdulist[extension_idx].data.astype(np.float)
     
-    # Extract the data header and create a WCS object
+    # Extract the header and create a WCS object
     hdr = self.hdulist[extension_idx].header
     wcs = WCS(hdr)
 
@@ -114,7 +115,7 @@ class exposure:
     mean, median, std = sigma_clipped_stats(data, sigma=sigma, iters=5)
 
     # Calculate the detection threshold and FWHM if not provided
-    if not threshold: threshold = np.mean(photutils.detect_threshold(data, snr=snr))
+    if not threshold: threshold = np.mean(detect_threshold(data, snr=snr))
     
     # Print the parameters being used
     for p,v in zip(['mean','median','std','threshold','FWHM'],[mean,median,std,threshold,FWHM]): print '{!s:10}: {:.3f}'.format(p,v)
@@ -129,10 +130,13 @@ class exposure:
     # Calculate magnitudes at given source positions
     apertures = CircularAperture(positions, r=2.)
     photometry_table = aperture_photometry(data, apertures)
-    photometry_table['sky_center'] = skycoords
     
-    # Add them to the exposure object
-    self.source_tables.append(photometry_table)  
+    # 'skycoords' IRCS object is problematic for stacking tables so for now we'll just add the ra and dec
+    # photometry_table['sky_center'] = skycoords
+    photometry_table['ra'], photometry_table['dec'] = skycoords.ra, skycoords.dec
+    
+    # Update data in the exposure object
+    self.source_table = vstack([self.source_table,photometry_table], join_type='inner')  
     
     # Plot the sources
     if plot:
