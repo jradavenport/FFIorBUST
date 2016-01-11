@@ -27,14 +27,16 @@ ex.source_tables                  # Print the list of source_tables
 
 ''' 
 
-def light_curves(search_radius=0.000005, output_data=False):
+def light_curves(search_radius=0.000005, KIC='', output_data=False):
   '''
   Plot and save all possible light curves from the Kepler Full Frame Images
   
   Parameters
   ----------
   search_radius: float
-    The search radius in degrees to use when cross matching KIC and FFI exposures
+    The search radius in degrees to use when cross matching Kepler Input Catalog and Full Frame Image exposures
+  KIC: sequence (optional)
+    An array of (ra,dec) tuples for all targets in the Kepler Input Catalog
   output_data: bool
     Return the data
     
@@ -45,19 +47,28 @@ def light_curves(search_radius=0.000005, output_data=False):
   
   '''
   exposures, sources = {}, {}
-  KIC = np.genfromtxt('./data/kic.txt', skip_header=True, delimiter='|', unpack=True, usecols=(0,1)).T
+  
+  # Load the KIC (slow!)
+  if KIC=='':
+    print 'Loading 13 million KIC targets. This takes about 2 minutes...'
+    KIC = np.genfromtxt('./data/kic.txt', skip_header=True, delimiter='|', unpack=True, usecols=(0,1)).T
+    print 'KIC loaded!\n'
   
   # Analyze all exposures
   for filepath in glob('./data/*.fits'):
     
     # Create exposure class
     ex = exposure(filepath)
+    print 'Starting exposure {}'.format(ex.date_str)
     
     # Get photometry for all 85 extensions
-    for idx in range(5): ex.extension(idx)
+    for idx in range(1,86): 
+      print 'Analyzing extension {}'.format(idx)
+      ex.extension(idx)
     
     # Add data to a master dictionary
     exposures[ex.date_str] = ex.source_table
+    print 'Finished exposure {}\n'.format(ex.date_str)
   
   # Do some stuff to match objects across exposures
   for source in KIC:
@@ -66,17 +77,17 @@ def light_curves(search_radius=0.000005, output_data=False):
     light_curve = []
     
     # Iterate through exposures to collect time-series detections
-    for exp in exposures:
+    for name,exp in exposures.items():
       # Create an array of all detection coordinates
-      ra, dec, phot = np.array([exp.source_table['ra'],exp.source_table['dec'],exp.source_table['aperture_sum']])
+      ra, dec, phot = np.array([exp['ra'],exp['dec'],exp['aperture_sum']])
       detections = np.array([ra,dec]).T
       
       # Create k-d tree of sources in the exposure
       tree = cKDTree(detections)
-      
-      # Find distance and index of nearest neighbor then grab its coordinates from the exposure
-      distance, index = spatial.KDTree(detections).query(source)
-      coords, magnitude = tree[index], phot[index]
+
+      # Find distance and index of nearest neighbor then grab its coordinates and magnitude from the exposure
+      distance, index = tree.query(source)
+      coords, magnitude = tree.data[index], phot[index]
       
       # If the distance is within the specified search radius, add it to the light curve
       if distance<search_radius: light_curve.append((exp.datetime,magnitude))
@@ -90,6 +101,7 @@ def light_curves(search_radius=0.000005, output_data=False):
       plt.plot(*light_curve.T)
       plt.title(name)
       plt.savefig('./plots/{}.png'.format(name))
+      plt.close()
   
   if output_data: return sources
 
