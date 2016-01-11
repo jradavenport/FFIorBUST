@@ -27,9 +27,22 @@ ex.source_tables                  # Print the list of source_tables
 
 ''' 
 
-def light_curves(search_radius=0.000005):
+def light_curves(search_radius=0.000005, output_data=False):
   '''
   Plot and save all possible light curves from the Kepler Full Frame Images
+  
+  Parameters
+  ----------
+  search_radius: float
+    The search radius in degrees to use when cross matching KIC and FFI exposures
+  output_data: bool
+    Return the data
+    
+  Returns
+  -------
+  sources: dict
+    A dictionary of the ra, dec and light curve for each detected source
+  
   '''
   exposures, sources = {}, {}
   KIC = np.genfromtxt('./data/kic.txt', skip_header=True, delimiter='|', unpack=True, usecols=(0,1)).T
@@ -70,13 +83,15 @@ def light_curves(search_radius=0.000005):
     
     # If there are any detections across the exposures, plot the light curve
     if any(light_curve):
-      # Output data?
-      # sources[name] = {'ra':RA, 'dec':DEC, 'detections':detections.T}
+      # Add the light curve to the sources dictionary
+      sources[name] = {'ra':RA, 'dec':DEC, 'detections':light_curve}
    
       # Plot the light curve of all exposures and save it
       plt.plot(*light_curve.T)
       plt.title(name)
       plt.savefig('./plots/{}.png'.format(name))
+  
+  if output_data: return sources
 
 class exposure:
   def __init__(self, filepath, verbose=False):
