@@ -1,9 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import photutils, os
+import os, time
 import astropy.io.fits as pf
 from glob import glob
+from photutils import daofind, aperture_photometry, CircularAperture
 from astropy.wcs import WCS
+from astropy.wcs.utils import pixel_to_skycoord
 from astropy.visualization import scale_image
 from astropy.stats import sigma_clipped_stats
 from astropy.visualization import SqrtStretch
@@ -11,6 +13,8 @@ from astropy.visualization.mpl_normalize import ImageNormalize
 
 '''
 This is a module to extract light curves from all objects in 53 Kepler Full Frame Image exposures.
+
+Authors: Joe Filippazzo, Brigitta Sipocz, Jim Davenport, Jennifer Cash (2016)
 
 Example:
 
@@ -64,14 +68,14 @@ class exposure:
     '''
     self.source_tables = []
     
-    # Get the datetime of the exposure from the filename
-    self.date_str = os.path.basename(filepath).replace('_ffi-cal.fits','').replace('kplr','')
-    self.datetime = time.strptime(date_str, '%Y%j%H%M%S')
-    
     # Open the file and print the info
     self.hdulist = pf.open(filepath)
     if verbose:
       self.hdulist.info()
+    
+    # Get the datetime of the exposure from the filename
+    self.date_str = os.path.basename(filepath).replace('_ffi-cal.fits','').replace('kplr','')
+    self.datetime = time.strptime(self.date_str, '%Y%j%H%M%S')
         
   def extension(self, extension_idx, threshold='', FWHM=3.0, sigma=3.0, snr=50., plot=False):
     '''
@@ -116,13 +120,22 @@ class exposure:
     for p,v in zip(['mean','median','std','threshold','FWHM'],[mean,median,std,threshold,FWHM]): print '{!s:10}: {:.3f}'.format(p,v)
 
     # Subtract background and generate sources list of all detections
-    sources = photutils.daofind(data-median, threshold, FWHM)
-    self.source_tables.append(sources)  
+    sources = daofind(data-median, threshold, FWHM)
+    
+    # Map RA and Dec to pixels
+    positions = (sources['xcentroid'], sources['ycentroid'])
+    skycoords = pixel_to_skycoord(*positions, wcs=wcs)
+    
+    # Calculate magnitudes at given source positions
+    apertures = CircularAperture(positions, r=2.)
+    photometry_table = aperture_photometry(data, apertures)
+    photometry_table['sky_center'] = skycoords
+    
+    # Add them to the exposure object
+    self.source_tables.append(photometry_table)  
     
     # Plot the sources
     if plot:
-      positions = (sources['xcentroid'], sources['ycentroid'])
-      apertures = photutils.CircularAperture(positions, r=4.)
       norm = ImageNormalize(stretch=SqrtStretch())
       plt.imshow(data, cmap='Greys', origin='lower', norm=norm)
       apertures.plot(color='blue', lw=1.5, alpha=0.5)
