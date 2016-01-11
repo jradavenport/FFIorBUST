@@ -56,5 +56,6 @@ docs/_build/
 # PyBuilder
 target/
 
-# Big ass FITS files
+# Big ass data files
 *.fits
+*kic.txt
