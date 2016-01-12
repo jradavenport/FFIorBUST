@@ -51,7 +51,9 @@ def light_curves(search_radius=0.000005, KIC='', output_data=False):
   # Load the KIC (slow!)
   if KIC=='':
     print 'Loading 13 million KIC targets. This takes about 2 minutes...'
-    KIC = np.genfromtxt('./data/kic.txt', skip_header=True, delimiter='|', unpack=True, usecols=(0,1)).T
+    KIC = np.genfromtxt('./data/kic.txt', delimiter='|', max_rows=5, names=True, deletechars='kic_')
+    KIC = Table(KIC, names=KIC.dtype.names)
+    KICcoords = np.array([KIC['ra'].data,KIC['de'].data]).T
     print 'KIC loaded!\n'
   
   # Analyze all exposures
@@ -71,7 +73,7 @@ def light_curves(search_radius=0.000005, KIC='', output_data=False):
     print 'Finished exposure {}\n'.format(ex.date_str)
   
   # Do some stuff to match objects across exposures
-  for source in KIC:
+  for source in KICcoords:
     RA, DEC = source
     name = '{:012.8f}'.format(RA)+('-' if DEC<0 else '+')+'{:012.8f}'.format(abs(DEC))
     light_curve = []
@@ -95,7 +97,8 @@ def light_curves(search_radius=0.000005, KIC='', output_data=False):
     # If there are any detections across the exposures, plot the light curve
     if any(light_curve):
       # Add the light curve to the sources dictionary
-      sources[name] = {'ra':RA, 'dec':DEC, 'detections':light_curve}
+      sources[name] = {i:KIC[2][i] for i in KIC.dtype.names}
+      sources[name]['light_curve'] = light_curve
    
       # Plot the light curve of all exposures and save it
       plt.plot(*light_curve.T)
