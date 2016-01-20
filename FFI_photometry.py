@@ -9,6 +9,7 @@ import glob
 import numpy as np
 import os
 
+from astropy.coordinates import match_coordinates_sky
 from astropy.io import fits
 from astropy.stats import mad_std
 from astropy.wcs.utils import pixel_to_skycoord
@@ -21,7 +22,7 @@ from photutils import daofind, aperture_photometry, CircularAperture
 def do_photometry(hdu, extensions=None, threshold=5, fwhm=2.5):
 
     if extensions is None:
-        extensions = np.arange(1, len(hdu) + 1)
+        extensions = np.arange(1, len(hdu))
     if not isiterable(extensions):
         extensions = (extensions, )
 
@@ -46,8 +47,12 @@ def do_photometry(hdu, extensions=None, threshold=5, fwhm=2.5):
     return output
 
 
-def cross_match_ffi():
-    return
+def cross_match_ffi(reference_sources, input_sources):
+    # TODO sort out the matchings from the tuple, do something with the
+    # duplicates
+    matching = match_coordinates_sky(reference_sources, input_sources)
+
+    return matching
 
 
 input_files = glob.glob('data/kplr*ffi-cal.fits')
