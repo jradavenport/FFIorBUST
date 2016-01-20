@@ -66,7 +66,8 @@ def light_curves(search_radius=0.000005, KIC='', output_data=False):
     # Get photometry for all 85 extensions
     for idx in range(1,86): 
       print 'Analyzing extension {}'.format(idx)
-      ex.extension(idx)
+      try: ex.extension(idx)
+      except: pass
     
     # Add data to a master dictionary
     exposures[ex.date_str] = ex.source_table
