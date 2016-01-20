@@ -59,3 +59,8 @@ target/
 # Big ass data files
 *.fits
 *kic.txt
+# Big binaries shouldn't live in the git repo
+data/*
+
+# Generated files/dirs
+.ipynb_checkpoints/
